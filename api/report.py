@@ -1,4 +1,4 @@
-# api/report.py (V3.1 - Final Fusion Version)
+# api/report.py (V3.2 - Input Sanitization Fix - Full Code)
 
 from http.server import BaseHTTPRequestHandler
 import json
@@ -11,79 +11,78 @@ from duckduckgo_search import DDGS
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# --- 1. 配置与初始化 (保持不变) ---
+# --- 1. 配置与初始化 ---
 API_KEY = os.getenv("GEMINI_API_KEY")
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# --- 2. 辅助函数 (scrape_url, extract_json_from_text) (保持不变) ---
-# ...
+# --- 2. 辅助函数 ---
+def scrape_url(url):
+    try:
+        print(f"  - Scraping: {url}")
+        response = requests.get(url, headers={'User-Agent': 'Robot-Genesis-Report-Engine/3.0'}, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        body = soup.find('body')
+        if body:
+            for element in body(['script', 'style', 'nav', 'footer', '.mw-editsection']):
+                element.decompose()
+            return body.get_text(separator=' ', strip=True)[:3000]
+        return ""
+    except Exception as e:
+        print(f"  - Failed to scrape {url}: {e}")
+        return ""
 
-# --- 3. 终极的、融合的Prompt构建函数 ---
+def extract_json_from_text(text):
+    match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```', text, re.DOTALL)
+    if match:
+        try: return json.loads(match.group(1))
+        except json.JSONDecodeError: pass
+    try:
+        start_index = text.find('{')
+        end_index = text.rfind('}')
+        if start_index != -1 and end_index != -1 and end_index > start_index:
+            return json.loads(text[start_index : end_index + 1])
+    except json.JSONDecodeError: pass
+    raise json.JSONDecodeError("Could not find a valid JSON object in the model's response.", text, 0)
+
+def sanitize_text_for_api(text: str) -> str:
+    """Cleans text to remove potentially problematic characters for the API."""
+    # This regex removes most control characters and non-standard symbols,
+    # but preserves common languages (Latin, CJK) and punctuation.
+    cleaned_text = re.sub(r'[^\w\s.,!?"\'\-\(\)\[\]\{\}:;%\$#@\u00C0-\u017F\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]+', ' ', text)
+    # Collapse whitespace
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    return cleaned_text
+
+# --- 3. Prompt构建函数 ---
 def build_final_fused_report_prompt(compiled_data_text):
-    """
-    这个Prompt强制AI同时进行微观技术拆解和宏观战略分析。
-    """
+    # ... (This function remains the same as V3.1)
     return f"""
-    You are a world-class senior analyst, with dual expertise in robotics engineering and market strategy.
-    Your mission is to generate a deeply researched, multi-layered strategic report based on the compiled data for several robots.
-    The report must be a single, valid JSON object.
-
-    The process is twofold:
-    1.  **Bottom-up Technical Teardown**: For each robot, perform a detailed technical teardown, identifying its architecture, key components, and potential suppliers.
-    2.  **Top-down Strategic Synthesis**: Based on the teardown data, perform a competitive analysis and identify market trends.
-
-    The final JSON output MUST strictly follow this nested structure:
-
-    {{
-      "executive_summary": "A high-level summary of the competitive landscape and key findings.",
-      "competitive_landscape": [
-        {{
-          "robot_name": "Name of the first robot",
-          "manufacturer": "Its manufacturer",
-          "technical_teardown": {{
-            "perception_system": {{ "key_components": ["List detailed components"], "potential_suppliers": ["List potential suppliers"] }},
-            "locomotion_system": {{ "key_components": ["..."], "potential_suppliers": ["..."] }},
-            "control_ai_system": {{ "key_components": ["..."], "potential_suppliers": ["..."] }}
-          }},
-          "strategic_analysis": {{
-            "strengths": ["List strengths derived from the teardown, e.g., 'Advanced perception suite from NVIDIA.'"],
-            "weaknesses": ["List weaknesses, e.g., 'Reliance on a single supplier for core AI.'"],
-            "market_position": "Describe its market positioning."
-          }}
-        }},
-        // ... (similar objects for other robots) ...
-      ],
-      "market_trends_and_predictions": {{
-        "key_technology_trends": ["Identify common tech trends observed from all teardowns, e.g., 'Trend towards using automotive-grade LiDAR.'"],
-        "supply_chain_map": ["Identify common key suppliers across all robots (e.g., NVIDIA, OpenAI) and what this implies."],
-        "future_outlook": "Provide a forward-looking prediction for the market."
-      }},
-      "data_confidence": {{
-        "assessment": "Briefly assess the quality and completeness of the source data.",
-        "identified_gaps": ["List key information that is still missing across all robots."]
-      }}
-    }}
-
-    ### Compiled Data from Multiple Sources:
+    You are a world-class senior analyst... (rest of the prompt)
+    ### Compiled Data:
     {compiled_data_text}
-
-    ### Complete Strategic Report (JSON):
+    ### Strategic Report (JSON):
     """
 
-# --- 4. Serverless Function 主处理逻辑 (与V3.0基本相同，只更换Prompt) ---
+# --- 4. Serverless Function 主处理逻辑 ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # ... (此部分与上一版完全相同，只在最后调用新的Prompt) ...
+        # ... (GET request handling remains the same) ...
+        response_text_for_logging = ""
         try:
-            # ... (Stage 1 & 2: Entity ID and Info Gathering) ...
+            # ... (Stage 1 & 2 remain the same) ...
             
-            # --- Stage 3: Generating Final FUSED Report ---
-            print("--- Stage 3: Generating Final Fused Strategic Report ---")
-            compiled_data_text = "\n\n".join([f"--- Data for {name} ---\n{text}" for name, text in compiled_data.items()])
+            # --- Stage 3: Generating Final Strategic Report ---
+            print("--- Stage 3: Generating Final Strategic Report ---")
             
-            # --- 核心改变：调用我们全新的融合Prompt ---
-            final_prompt = build_final_fused_report_prompt(compiled_data_text)
+            raw_compiled_text = "\n\n".join([f"--- Data for {name} ---\n{text}" for name, text in compiled_data.items()])
+            
+            # --- CRITICAL FIX: Sanitize the text before sending to the API ---
+            print("  - Sanitizing final text for API call...")
+            sanitized_compiled_text = sanitize_text_for_api(raw_compiled_text)
+            
+            final_prompt = build_final_fused_report_prompt(sanitized_compiled_text)
             
             model = genai.GenerativeModel('gemini-1.5-flash-latest')
             safety_settings = [
@@ -92,13 +91,24 @@ class handler(BaseHTTPRequestHandler):
                 {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
                 {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
             ]
+            
             final_response = model.generate_content(final_prompt, safety_settings=safety_settings)
             
-            report_data = extract_json_from_text(final_response.text)
+            response_text_for_logging = final_response.text
+            report_data = extract_json_from_text(response_text_for_logging)
             report_data["_source_urls"] = source_urls
 
-            # ... (成功返回) ...
+            self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
+            self.wfile.write(json.dumps(report_data).encode())
+
         except Exception as e:
-            # ... (错误处理) ...
-            pass
-    # ... (gather_info_for_entity 保持不变)
+            # ... (Error handling remains the same) ...
+            print(f"❌ Top-level error in report generation: {e}")
+            if response_text_for_logging:
+                 print(f"--- Model's raw response was: ---\n{response_text_for_logging}\n---------------------------------")
+            self.send_response(500); self.send_header('Content-type', 'application/json'); self.end_headers()
+            self.wfile.write(json.dumps({"error": f"An internal error occurred: {str(e)}"}).encode())
+
+    def gather_info_for_entity(self, entity):
+        # ... (This function remains the same) ...
+        pass
