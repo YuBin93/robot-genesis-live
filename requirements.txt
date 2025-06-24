@@ -1,0 +1,5 @@
+# requirements.txt
+google-generativeai
+beautifulsoup4
+requests
+duckduckgo-search
