@@ -3,33 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot Genesis - 实时AI分析</title>
-    <!-- 我们将把CSS也移到JS中管理，以保持HTML的纯净 -->
-    <style id="main-styles">
-        /* 这个style标签的内容将被JS填充 */
-    </style>
-    <!-- D3.js暂时保留，为第三阶段的Sankey图做准备 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-sankey/0.12.3/d3-sankey.min.js"></script>
+    <title>Robot Genesis - 战略情报</title>
+    <style id="main-styles"></style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <!-- 头部信息由JS动态生成 -->
-        </header>
-
-        <div class="search-box">
-            <!-- 搜索框由JS动态生成 -->
-        </div>
-
-        <!-- 这是我们将要填充所有动态内容的核心区域 -->
-        <div id="results-container" class="results-container">
-            <!-- 初始提示信息 -->
-            <div class="initial-prompt">请输入一个机器人名称开始探索...</div>
-        </div>
-    </div>
-
-    <!-- 我们的主逻辑文件 -->
+    <div id="app-container"></div>
     <script src="js/app.js"></script>
 </body>
 </html>
