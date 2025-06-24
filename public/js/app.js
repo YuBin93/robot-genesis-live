@@ -1,25 +1,19 @@
-// public/js/app.js
+// public/js/app.js (V2.0 - Final & Complete)
 
-// --- 初始加载时执行 ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 整个应用由一个主函数启动
     initializeApp();
 });
 
-// --- 全局状态管理 ---
-let intelligenceBriefing = null; // 用于存储从后端获取的情报包
+let intelligenceBriefing = null;
 
-// --- 主函数：初始化应用 ---
 function initializeApp() {
     injectStyles();
     renderHeader();
     renderSearchBox();
 }
 
-// --- 1. 样式注入 ---
 function injectStyles() {
     const styleTag = document.getElementById('main-styles');
-    // 将所有CSS放在JS中，便于管理
     styleTag.innerHTML = `
         body { background-color: #121212; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 5vh 2vw; }
         .container { width: 95%; max-width: 700px; }
@@ -46,17 +40,15 @@ function injectStyles() {
         .deep-dive-btn:hover { transform: scale(1.02); }
         .deep-dive-btn:disabled { background: #555; cursor: not-allowed; }
         .loader { text-align: center; padding: 2rem; font-size: 1.2rem; }
+        .deep-analysis-card h4 { font-size: 1.2rem; color: #00aaff; margin-top: 1.5rem; }
+        .deep-analysis-card p { line-height: 1.5; }
     `;
 }
 
-// --- 2. 渲染静态UI组件 ---
 function renderHeader() {
     const header = document.querySelector('.header');
     header.innerHTML = `
-        <h1>
-            <span class="logo">🤖</span>
-            Robot <span class="genesis">Genesis</span>
-        </h1>
+        <h1><span class="logo">🤖</span> Robot <span class="genesis">Genesis</span></h1>
         <p>探索机器人宇宙 | 社区驱动，AI实时分析</p>
     `;
 }
@@ -74,24 +66,19 @@ function renderSearchBox() {
     });
 }
 
-// --- 3. 核心功能：执行搜索并渲染结果 ---
 async function performSearch() {
     const input = document.getElementById('robotInput').value.trim();
     const resultsContainer = document.getElementById('results-container');
     if (!input) return;
-
     resultsContainer.innerHTML = `<div class="loader card">🧠 正在联系AI情报官，请稍候...</div>`;
-
     try {
         const response = await fetch(`/api/analyze?robot=${encodeURIComponent(input)}`);
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || `服务器返回错误 ${response.status}`);
         }
-        
-        intelligenceBriefing = await response.json(); // 将情报包存到全局变量
+        intelligenceBriefing = await response.json();
         renderIntelligenceBriefing(intelligenceBriefing);
-
     } catch (error) {
         resultsContainer.innerHTML = `<div class="card" style="color: #ff5c5c;">❌ 分析出错: ${error.message}</div>`;
     }
@@ -99,9 +86,7 @@ async function performSearch() {
 
 function renderIntelligenceBriefing(data) {
     const resultsContainer = document.getElementById('results-container');
-    resultsContainer.innerHTML = ''; // 清空加载动画
-
-    // 渲染摘要卡片
+    resultsContainer.innerHTML = '';
     const { robotInfo, summary, sources } = data;
     resultsContainer.innerHTML += `
         <div class="summary-card card">
@@ -110,27 +95,69 @@ function renderIntelligenceBriefing(data) {
             <p style="margin-top: 1rem;">${summary}</p>
         </div>
     `;
-
-    // 渲染信息源卡片
     let sourcesHTML = '<div class="sources-card card"><h2>信息源</h2><ul>';
-    if (sources.official) sourcesHTML += `<li><a href="${sources.official}" target="_blank"><strong>官网:</strong> ${sources.official}</a></li>`;
-    if (sources.wikipedia) sourcesHTML += `<li><a href="${sources.wikipedia}" target="_blank"><strong>维基百科:</strong> ${sources.wikipedia}</a></li>`;
-    (sources.news || []).forEach(item => sourcesHTML += `<li><a href="${item.url}" target="_blank">${item.title}</a></li>`);
-    (sources.videos || []).forEach(item => sourcesHTML += `<li><a href="${item.url}" target="_blank">🎬 ${item.title}</a></li>`);
+    if (sources.official) sourcesHTML += `<li><a href="${sources.official}" target="_blank" rel="noopener noreferrer"><strong>官网:</strong> ${sources.official}</a></li>`;
+    if (sources.wikipedia) sourcesHTML += `<li><a href="${sources.wikipedia}" target="_blank" rel="noopener noreferrer"><strong>维基百科:</strong> ${sources.wikipedia}</a></li>`;
+    (sources.news || []).forEach(item => sourcesHTML += `<li><a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.title}</a></li>`);
+    (sources.videos || []).forEach(item => sourcesHTML += `<li><a href="${item.url}" target="_blank" rel="noopener noreferrer">🎬 ${item.title}</a></li>`);
     sourcesHTML += '</ul></div>';
     resultsContainer.innerHTML += sourcesHTML;
-
-    // 渲染深度分析按钮
     resultsContainer.innerHTML += `
         <div class="deep-dive-card">
             <button id="deep-dive-btn" class="deep-dive-btn">🤖 启动AI进行深度技术分析</button>
         </div>
         <div id="deep-analysis-results"></div>
     `;
-    
-    // 为新生成的按钮绑定事件 (为第三阶段做准备)
-    document.getElementById('deep-dive-btn').addEventListener('click', () => {
-        alert("深度分析功能将在第三阶段实现！");
-        // 在下一阶段，这里将调用 performDeepDive() 函数
-    });
+    document.getElementById('deep-dive-btn').addEventListener('click', performDeepDive);
+}
+
+async function performDeepDive() {
+    const deepDiveBtn = document.getElementById('deep-dive-btn');
+    const deepAnalysisContainer = document.getElementById('deep-analysis-results');
+    if (!intelligenceBriefing || !intelligenceBriefing.sources) {
+        deepAnalysisContainer.innerHTML = `<div class="card" style="color: #ff5c5c;">错误：缺少用于深度分析的信息源。</div>`;
+        return;
+    }
+    deepDiveBtn.innerText = '🧠 AI正在阅读所有资料并深度思考中...';
+    deepDiveBtn.disabled = true;
+    const { official, wikipedia, news, videos } = intelligenceBriefing.sources;
+    const allUrls = [official, wikipedia, ...(news || []).map(n => n.url), ...(videos || []).map(v => v.url)].filter(Boolean);
+    try {
+        const response = await fetch(`/api/deep_analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: allUrls })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `深度分析服务器返回错误 ${response.status}`);
+        }
+        const deepAnalysisResult = await response.json();
+        renderDeepAnalysis(deepAnalysisResult);
+        deepDiveBtn.style.display = 'none';
+    } catch (error) {
+        deepAnalysisContainer.innerHTML = `<div class="card" style="color: #ff5c5c;">❌ 深度分析出错: ${error.message}</div>`;
+        deepDiveBtn.innerText = '分析失败，请重试';
+        deepDiveBtn.disabled = false;
+    }
+}
+
+function renderDeepAnalysis(data) {
+    const deepAnalysisContainer = document.getElementById('deep-analysis-results');
+    let html = `<div class="deep-analysis-card card"><h2>深度技术分析</h2>`;
+    if (data.technical_summary) {
+        html += `<p style="margin-bottom: 1rem;">${data.technical_summary}</p>`;
+    }
+    for (const [key, system] of Object.entries(data)) {
+        if (typeof system === 'object' && system !== null && key !== 'technical_summary') {
+            html += `<div style="margin-top: 1.5rem; border-left: 3px solid #1e90ff; padding-left: 1rem;">
+                        <h4>${key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h4>
+                        <p><strong>组件:</strong> ${(system.components || ['N/A']).join(', ')}</p>
+                        <p><strong>伙伴/供应商:</strong> ${(system.suppliers_and_partners || ['N/A']).join(', ')}</p>
+                        <p><strong>分析:</strong> ${system.analysis || 'N/A'}</p>
+                    </div>`;
+        }
+    }
+    html += `</div>`;
+    deepAnalysisContainer.innerHTML = html;
 }
