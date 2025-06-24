@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robot Genesis - 战略情报</title>
+    <!-- 所有的样式都将由JS动态注入到这个style标签中 -->
     <style id="main-styles"></style>
 </head>
 <body>
+    <!-- 这是我们整个应用的根容器，JS将在这里构建所有UI元素 -->
     <div id="app-container"></div>
+
+    <!-- 引用我们的主逻辑文件，它必须放在body的末尾以确保DOM加载完毕 -->
     <script src="js/app.js"></script>
 </body>
 </html>
