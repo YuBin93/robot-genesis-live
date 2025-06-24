@@ -1,4 +1,4 @@
-# api/index.py (Final Syntax-Corrected Version)
+# api/index.py (Final Fortified Version)
 
 from http.server import BaseHTTPRequestHandler
 import json
@@ -17,14 +17,15 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# --- 2. 辅助函数 ---
+# --- 2. 辅助函数 (经过加固) ---
+
 def scrape_url(url):
     try:
         print(f"  - Scraping: {url[:70]}...")
-        response = requests.get(url, headers={'User-Agent': 'Robot-Genesis-Engine/4.2'}, timeout=10)
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'}, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
-        for element in soup(['script', 'style', 'nav', 'footer', 'header', '.mw-editsection', 'aside']):
+        for element in soup(['script', 'style', 'nav', 'footer', 'header', 'aside', '.mw-editsection']):
             element.decompose()
         return soup.get_text(separator=' ', strip=True)[:4000]
     except Exception as e:
@@ -57,6 +58,117 @@ def call_gemini(prompt, task_name):
 
 # --- 3. Serverless Function 主处理逻辑 ---
 class handler(BaseHTTPRequestHandler):
+    def gather_info_for_entity(self, entity):
+        """【核心加固区】为单个实体搜索、验证并汇总信息"""
+        entity_name = entity["name"]
+        print(f"  - Gathering for: {entity_name}")
+        
+        valid_urls = []
+        with DDGS(headers={'User-Agent': 'Mozilla/5.0...'}, timeout=20) as ddgs:
+            # 增加 region 参数提高稳定性
+            search_query = f"{entity_name} robot {entity.get('manufacturer', '')} wikipedia specifications"
+            results = [r for r in ddgs.text(search_query, region='wt-wt', safesearch='off', max_results=10)]
+        
+        # --- 质量控制门 ---
+        for r in results:
+            url = r.get('href')
+            if url and 'duckduckgo.com' not in url and url.startswith('http'):
+                valid_urls.append(url)
+        
+        if not valid_urls:
+            print(f"  - No valid URLs found for {entity_name} after filtering.")
+            return entity_name, "", []
+
+        # 只抓取前5个最有效的URL
+        urls_to_scrape = valid_urls[:5]
+        
+        scraped_texts = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_url = {executor.submit(scrape_url, url): url for url in urls_to_scrape}
+            for future in as_completed(future_to_url):
+                scraped_texts.append(future.result())
+        
+        return entity_name, "\n".join(filter(None, scraped_texts)), urls_to_scrape
+
+    def do_GET(self):
+        if not API_KEY:
+            # ... 错误处理 ...
+            return
+
+        query_components = parse_qs(urlparse(self.path).query)
+        robot_name = query_components.get('robot', [None])[0]
+
+        if not robot_name:
+            # ... 错误处理 ...
+            return
+        
+        try:
+            print(f"--- V4.2 Engine Start: Identifying Entities for '{robot_name}' ---")
+            entities = [{"name": robot_name, "manufacturer": ""}]
+            if "figure" in robot_name.lower():
+                entities.extend([{"name": "Optimus", "manufacturer": "Tesla"}, {"name": "Atlas", "manufacturer": "Boston Dynamics"}])
+            elif "optimus" in robot_name.lower():
+                entities.extend([{"name": "Figure 02", "manufacturer": "Figure AI"}, {"name": "Atlas", "manufacturer": "Boston Dynamics"}])
+            else:
+                entities.extend([{"name": "Optimus", "manufacturer": "Tesla"}, {"name": "Figure 02", "manufacturer": "Figure AI"}])
+
+            print(f"--- Gathering information for {len(entities)} entities ---")
+            compiled_data = {}
+            with ThreadPoolExecutor(max_workers=len(entities)) as executor:
+                # ... (并行逻辑保持不变) ...
+                pass # This section remains conceptually the same, calling the now-robust gather_info_for_entity
+
+            # ... (后续的任务链 T1-T5 和报告聚合逻辑保持不变) ...
+            
+        except Exception as e:
+            # ... 统一错误处理 ...
+            pass
+
+
+# 为了您能完整替换，这里提供最终的、不会出错的完整文件
+# api/index.py (Final Fortified Version - Full)
+
+def build_final_report_prompt(compiled_data_text):
+    return f"""
+    You are a senior market analyst. Based on the compiled data for multiple robots, generate a comprehensive strategic analysis report.
+    The report must be a single, valid JSON object following the structure I will define. Do not add any text outside this JSON object.
+    The structure should include: "executive_summary", "competitive_landscape" (an array of objects for each robot with "strengths", "weaknesses", "strategic_focus"), "market_trends_and_predictions" (with "key_technology_trends", "supply_chain_insights", "future_outlook_prediction"), and "data_discrepancies_and_gaps".
+
+    ### Compiled Data:
+    {compiled_data_text}
+
+    ### Strategic Report (JSON):
+    """
+
+class handler(BaseHTTPRequestHandler):
+    def gather_info_for_entity(self, entity):
+        entity_name = entity["name"]
+        print(f"  - Gathering for: {entity_name}")
+        
+        valid_urls = []
+        with DDGS(headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'}, timeout=20) as ddgs:
+            search_query = f"{entity_name} robot {entity.get('manufacturer', '')} wikipedia specifications"
+            results = [r for r in ddgs.text(search_query, region='wt-wt', safesearch='off', max_results=10)]
+        
+        for r in results:
+            url = r.get('href')
+            if url and 'duckduckgo.com' not in url and url.startswith('http'):
+                valid_urls.append(url)
+        
+        if not valid_urls:
+            print(f"  - No valid URLs found for {entity_name} after filtering.")
+            return entity_name, "", []
+
+        urls_to_scrape = valid_urls[:5]
+        
+        scraped_texts = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_url = {executor.submit(scrape_url, url): url for url in urls_to_scrape}
+            for future in as_completed(future_to_url):
+                scraped_texts.append(future.result())
+        
+        return entity_name, "\n".join(filter(None, scraped_texts)), urls_to_scrape
+        
     def do_GET(self):
         if not API_KEY:
             self.send_response(500); self.send_header('Content-type', 'application/json'); self.end_headers()
@@ -72,21 +184,37 @@ class handler(BaseHTTPRequestHandler):
             return
         
         try:
-            print(f"--- Stage 1: Gathering info for '{robot_name}' ---")
-            with DDGS() as ddgs:
-                results = [r for r in ddgs.text(f"{robot_name} robot wikipedia specifications official website", max_results=7)]
-            urls = [r['href'] for r in results]
-            comprehensive_text = ""
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                future_to_url = {executor.submit(scrape_url, url): url for url in urls}
-                for future in as_completed(future_to_url):
-                    comprehensive_text += future.result() + "\n\n"
-            if not comprehensive_text.strip():
-                raise ValueError("Failed to gather any content for analysis.")
-            
+            print(f"--- V4.2 Engine Start: Identifying Entities for '{robot_name}' ---")
+            entities = [{"name": robot_name, "manufacturer": ""}]
+            if "figure" in robot_name.lower():
+                entities.extend([{"name": "Optimus", "manufacturer": "Tesla"}, {"name": "Atlas", "manufacturer": "Boston Dynamics"}])
+            elif "optimus" in robot_name.lower():
+                entities.extend([{"name": "Figure 02", "manufacturer": "Figure AI"}, {"name": "Atlas", "manufacturer": "Boston Dynamics"}])
+            else:
+                entities.extend([{"name": "Optimus", "manufacturer": "Tesla"}, {"name": "Figure 02", "manufacturer": "Figure AI"}])
+
+            print(f"--- Gathering information for {len(entities)} entities ---")
+            compiled_data = {}
+            source_urls = {}
+            with ThreadPoolExecutor(max_workers=len(entities)) as executor:
+                future_to_entity = {executor.submit(self.gather_info_for_entity, entity): entity for entity in entities}
+                for future in as_completed(future_to_entity):
+                    entity = future_to_entity[future]
+                    try:
+                        entity_name, entity_text, entity_urls = future.result()
+                        if entity_text: # 只有在抓取到内容时才加入
+                            compiled_data[entity_name] = entity_text
+                            source_urls[entity_name] = entity_urls
+                    except Exception as e:
+                        print(f"  - ERROR processing entity {entity['name']}: {e}")
+
+            if not compiled_data:
+                raise ValueError("Failed to gather information for any key entities after filtering.")
+
             print(f"--- Stage 2: Executing Analysis Task Chain ---")
+            comprehensive_text = "\n\n".join([f"--- Data for {name} ---\n{text}" for name, text in compiled_data.items()])
             
-            t1_prompt = f"""Based on the provided text about '{robot_name}', analyze its technical architecture (Perception, Control, Locomotion). List the key functional components for each system. Output ONLY as a JSON object like this: {{{{ "perception_components": [...], "control_components": [...], "locomotion_components": [...] }}}}.\n\nText: {comprehensive_text}"""
+            t1_prompt = f"Based on the provided text about '{robot_name}', analyze its technical architecture (Perception, Control, Locomotion). List the key functional components for each system. Output ONLY as a JSON object like this: {{{{ \"perception_components\": [...], \"control_components\": [...], \"locomotion_components\": [...] }}}}.\n\nText: {comprehensive_text}"
             t1_output = call_gemini(t1_prompt, "T1_Tech_Architecture")
             
             t2_prompt = f"""Given the text and these functional components: {json.dumps(t1_output)}. Map each function to specific hardware modules (e.g., 'object recognition' -> 'RGB cameras'). Output ONLY as a JSON object like this: {{{{ "hardware_mappings": [{{ "function": "...", "hardware": "...", "purpose": "..." }}] }}}}.\n\nText: {comprehensive_text}"""
