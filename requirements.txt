@@ -1,5 +1,4 @@
-# requirements.txt
 google-generativeai
 beautifulsoup4
 requests
-
+upstash-redis
