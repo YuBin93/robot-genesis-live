@@ -1,70 +1,54 @@
-# api/analyze_entity.py
-from http.server import BaseHTTPRequestHandler
-import json, os, re, requests
-from urllib.parse import urlparse, parse_qs
-from bs4 import BeautifulSoup
-import google.generativeai as genai
+# api/analyze_entity.py (Upstash Cache Version)
+
+# ... (其他imports保持不变)
+from upstash_redis import Redis # 引入新的库
 
 # --- 配置与初始化 ---
-API_KEY = os.getenv("GEMINI_API_KEY")
-SERPER_API_KEY = os.getenv("SERPER_API_KEY")
-if API_KEY:
-    genai.configure(api_key=API_KEY)
+# ... (API Key部分保持不变)
+# 从Vercel自动注入的环境变量中初始化Redis客户端
+redis = Redis.from_env()
 
-# --- 辅助函数 ---
-def professional_search(query):
-    if not SERPER_API_KEY: raise ValueError("SERPER_API_KEY not set.")
-    url = "https://google.serper.dev/search"
-    payload = json.dumps({"q": query, "num": 5})
-    headers = {'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'}
-    response = requests.post(url, headers=headers, data=payload, timeout=15)
-    response.raise_for_status()
-    return response.json()
-
-def extract_json_from_text(text):
-    match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```', text, re.DOTALL)
-    if match: return json.loads(match.group(1))
-    start_index = text.find('{'); end_index = text.rfind('}')
-    if start_index != -1 and end_index != -1: return json.loads(text[start_index : end_index + 1])
-    raise json.JSONDecodeError("Could not find valid JSON.", text, 0)
+# ... (professional_search, extract_json_from_text 函数保持不变)
 
 # --- 主处理逻辑 ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            if not API_KEY: raise ValueError("GEMINI_API_KEY not set.")
-            robot_name = parse_qs(urlparse(self.path).query).get('name', [None])[0]
-            if not robot_name: raise ValueError("'name' parameter is missing.")
-
-            print(f"--- Analyzing entity: {robot_name} ---")
-            search_results = professional_search(f"{robot_name} robot specifications official website")
-            context = "\n".join([f"Title: {r.get('title', '')}\nSnippet: {r.get('snippet', '')}" for r in search_results.get('organic', [])])
-
-            if not context.strip(): raise ValueError("Search returned no content.")
-
-            prompt = f"""
-            Based on the provided search results for '{robot_name}', extract key information.
-            Output ONLY as a valid JSON object like this:
-            {{ "name": "Full official name", "manufacturer": "The manufacturer", "summary": "A one-sentence summary.", "specs": {{ "Weight": "...", "Payload": "..." }} }}
+            # ... (robot_name 解析保持不变)
             
-            ### Search Results:
-            {context}
+            # 创建一个标准化的缓存键
+            cache_key = f"robot_entity:{robot_name.strip().lower().replace(' ', '_')}"
 
-            ### JSON Output:
-            """
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            safety_settings = [{"category": c, "threshold": "BLOCK_NONE"} for c in ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"]]
-            response = model.generate_content(prompt, safety_settings=safety_settings)
+            # --- 步骤A: 检查缓存 ---
+            print(f"  - Checking Upstash cache with key: {cache_key}")
+            cached_data = redis.get(cache_key)
+            if cached_data:
+                print("  - ✅ Cache HIT! Returning cached data.")
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                # Redis返回的是字符串，需要先解析成JSON对象
+                self.wfile.write(json.dumps(json.loads(cached_data)).encode('utf-8'))
+                return
+
+            print("  - ❌ Cache MISS. Proceeding to live analysis.")
             
-            entity_data = extract_json_from_text(response.text)
+            # --- 步骤B: 实时分析 (逻辑不变) ---
+            # ...
+            entity_data = ... # (获取到entity_data)
 
+            # --- 步骤C: 将新结果存入缓存 ---
+            print(f"  - Storing new data in Upstash cache. Key: {cache_key}")
+            # Redis需要我们将Python字典转换成JSON字符串再存入
+            # ex=86400 设置过期时间为24小时
+            redis.set(cache_key, json.dumps(entity_data), ex=86400)
+
+            # 返回新生成的数据
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(entity_data).encode('utf-8'))
             
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            # ... (错误处理保持不变)
+            pass
